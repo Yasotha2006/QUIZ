@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C Programming Quiz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(270deg, #667eea, #764ba2, #ff6a00, #ff0080, #667eea);
+      background-size: 1000% 1000%;
+      animation: GradientBG 15s ease infinite;
+    }
+    @keyframes GradientBG {
+      0% {background-position:0% 50%;}
+      50% {background-position:100% 50%;}
+      100% {background-position:0% 50%;}
+    }
+    .fade-in {
+      animation: fadeIn 0.6s ease forwards;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(15px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 text-gray-800">
+  <div class="w-full max-w-3xl bg-white rounded-xl shadow-2xl p-8" id="app-container">
+
+    <!-- Details Page -->
+    <div id="details-page" class="fade-in flex flex-col items-center text-center">
+      <h1 class="text-4xl font-bold text-purple-700 mb-6 drop-shadow">C Programming Quiz</h1>
+      <form id="details-form" class="w-full max-w-md bg-purple-50 rounded-xl shadow p-6 space-y-4" novalidate>
+        <div>
+          <label for="username" class="block text-left font-semibold text-purple-800">Enter Your Name</label>
+          <input type="text" id="username" placeholder="Your full name" class="mt-1 w-full p-3 border-2 border-purple-500 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none" required />
+          <p class="text-sm text-red-500 hidden" id="name-error">Please enter your name.</p>
+        </div>
+        <div>
+          <label for="email" class="block text-left font-semibold text-purple-800">Enter Your Email</label>
+          <input type="email" id="email" placeholder="your.email@example.com" class="mt-1 w-full p-3 border-2 border-purple-500 rounded-lg focus:ring-2 focus:ring-pink-500 outline-none" required />
+          <p class="text-sm text-red-500 hidden" id="email-error">Please enter a valid email.</p>
+        </div>
+        <button type="submit" id="start-btn" class="w-full bg-gradient-to-r from-purple-600 to-pink-500 text-white py-3 rounded-full font-bold hover:scale-105 transition-transform shadow-lg">Start Quiz</button>
+      </form>
+    </div>
+
+    <!-- Quiz Page -->
+    <div id="quiz-page" class="hidden flex-col">
+      <h5 class="text-xl font-semibold text-indigo-600 mb-3">Welcome, <span id="user-name" class="font-bold"></span>!</h5>
+      <div id="question-text" class="text-lg font-bold text-gray-700 mb-4 whitespace-pre-wrap"></div>
+      <div id="options" class="space-y-3 mb-4"></div>
+      <div class="flex items-center justify-between mt-4">
+        <div id="feedback" class="font-semibold text-lg text-center"></div>
+        <div class="w-40 h-3 bg-gray-300 rounded overflow-hidden">
+          <div id="timer-bar" class="h-full bg-indigo-500 transition-all duration-1000"></div>
+        </div>
+      </div>
+      <button id="next-btn" disabled class="mt-6 mx-auto bg-indigo-600 text-white px-6 py-2 rounded-full font-semibold shadow hover:bg-indigo-700 disabled:opacity-50">Next Question</button>
+    </div>
+
+    <!-- Result Page -->
+    <div id="result-page" class="hidden text-center">
+      <h2 class="text-2xl font-bold text-green-600 mb-4">Quiz Result</h2>
+      <div id="user-info" class="text-gray-700 mb-2"></div>
+      <div id="score" class="text-xl font-bold text-indigo-600 mb-4"></div>
+      <div id="certificate" class="bg-purple-100 border-4 border-dashed border-purple-600 p-6 rounded-xl shadow mb-4 whitespace-pre-wrap font-serif text-gray-800 hidden"></div>
+      <div id="fail-message" class="text-red-600 font-bold text-lg mb-4 hidden"></div>
+      <button id="restart-btn" class="bg-purple-600 text-white px-6 py-2 rounded-full font-bold shadow hover:bg-purple-700">Restart Quiz</button>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      { question: "What is the correct way to declare a variable in C?", options: ["int x;", "x int;", "var x;", "declare x int;"], answer: 0 },
+      { question: "Which header file is required for printf function?", options: ["stdio.h", "conio.h", "stdlib.h", "math.h"], answer: 0 },
+      { question: "What is the output of: printf(\"%d\", 5 + 3);?", options: ["8", "53", "5+3", "Error"], answer: 0 },
+      { question: "Which loop is guaranteed to execute at least once?", options: ["for loop", "while loop", "do-while loop", "none"], answer: 2 },
+      { question: "What is the size of int data type (on most 32-bit systems)?", options: ["2 bytes", "4 bytes", "8 bytes", "Depends on compiler"], answer: 1 },
+    ];
+
+    let currentQuestionIndex = 0, score = 0, timer = null, timeLeft = 15;
+    let userName = '', userEmail = '';
+
+    const detailsPage = document.getElementById('details-page');
+    const quizPage = document.getElementById('quiz-page');
+    const resultPage = document.getElementById('result-page');
+    const detailsForm = document.getElementById('details-form');
+    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
+    const nameError = document.getElementById('name-error');
+    const emailError = document.getElementById('email-error');
+    const userNameSpan = document.getElementById('user-name');
+    const questionText = document.getElementById('question-text');
+    const optionsDiv = document.getElementById('options');
+    const feedbackDiv = document.getElementById('feedback');
+    const timerBar = document.getElementById('timer-bar');
+    const nextBtn = document.getElementById('next-btn');
+    const scoreDiv = document.getElementById('score');
+    const certificateDiv = document.getElementById('certificate');
+    const failMessageDiv = document.getElementById('fail-message');
+    const restartBtn = document.getElementById('restart-btn');
+    const userInfoDiv = document.getElementById('user-info');
+
+    function validateForm() {
+      let valid = true;
+      if (!usernameInput.value.trim()) {
+        nameError.classList.remove('hidden');
+        valid = false;
+      } else nameError.classList.add('hidden');
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(emailInput.value)) {
+        emailError.classList.remove('hidden');
+        valid = false;
+      } else emailError.classList.add('hidden');
+      return valid;
+    }
+
+    detailsForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!validateForm()) return;
+      userName = usernameInput.value.trim();
+      userEmail = emailInput.value.trim();
+      userNameSpan.textContent = userName;
+      detailsPage.classList.add('hidden');
+      quizPage.classList.remove('hidden');
+      currentQuestionIndex = 0;
+      score = 0;
+      showQuestion();
+    });
+
+    function showQuestion() {
+      timeLeft = 15;
+      updateTimer();
+      nextBtn.disabled = true;
+      feedbackDiv.textContent = '';
+      const q = questions[currentQuestionIndex];
+      questionText.textContent = `Q${currentQuestionIndex + 1}: ${q.question}`;
+      optionsDiv.innerHTML = '';
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full bg-gray-100 border-2 border-indigo-500 rounded-lg p-3 text-left hover:bg-indigo-500 hover:text-white transition';
+        btn.textContent = opt;
+        btn.onclick = () => selectOption(idx);
+        optionsDiv.appendChild(btn);
+      });
+      startTimer();
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          disableOptions();
+          feedbackDiv.textContent = "Time is up!";
+          feedbackDiv.className = "text-red-600 font-semibold text-lg text-center";
+          nextBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    function updateTimer() {
+      timerBar.style.width = (timeLeft / 15) * 100 + '%';
+      timerBar.classList.toggle("bg-red-500", timeLeft <= 5);
+      timerBar.classList.toggle("bg-indigo-500", timeLeft > 5);
+    }
+
+    function disableOptions() {
+      document.querySelectorAll("#options button").forEach(btn => btn.disabled = true);
+    }
+
+    function selectOption(idx) {
+      if (!nextBtn.disabled) return;
+      clearInterval(timer);
+      disableOptions();
+      const q = questions[currentQuestionIndex];
+      if (idx === q.answer) {
+        score++;
+        feedbackDiv.textContent = "Correct!";
+        feedbackDiv.className = "text-green-600 font-semibold text-lg text-center";
+      } else {
+        feedbackDiv.textContent = `Wrong! Correct: "${q.options[q.answer]}"`;
+        feedbackDiv.className = "text-red-600 font-semibold text-lg text-center";
+      }
+      nextBtn.disabled = false;
+    }
+
+    nextBtn.addEventListener("click", () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) showQuestion();
+      else showResult();
+    });
+
+    function showResult() {
+      quizPage.classList.add('hidden');
+      resultPage.classList.remove('hidden');
+      userInfoDiv.innerHTML = `<p><strong>Name:</strong> ${userName}</p><p><strong>Email:</strong> ${userEmail}</p>`;
+      scoreDiv.textContent = `You scored ${score} out of ${questions.length}`;
+      if (score >= Math.ceil(questions.length * 0.6)) {
+        certificateDiv.classList.remove("hidden");
+        certificateDiv.textContent = `Certificate of Completion\n\nThis certifies that ${userName}\nhas successfully passed the C Programming Quiz\nwith a score of ${score}/${questions.length}.\n\n🎉 Congratulations!`;
+        failMessageDiv.classList.add("hidden");
+      } else {
+        certificateDiv.classList.add("hidden");
+        failMessageDiv.classList.remove("hidden");
+        failMessageDiv.textContent = "Unfortunately, you did not pass. Please try again!";
+      }
+    }
+
+    restartBtn.addEventListener("click", () => {
+      resultPage.classList.add('hidden');
+      detailsPage.classList.remove('hidden');
+      detailsForm.reset();
+    });
+  </script>
+</body>
+</html>
